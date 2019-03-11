@@ -32,28 +32,28 @@ write_grid([R1 | RRest]) :-
 % disnake:
 
 disnake(Pattern, Cols, Rows) :-
-	disnakehelper(Pattern, Cols, Rows, Pattern, Cols, forward, [[]]).
+	disnakehelper(Pattern, Cols, Rows, Pattern, Cols, forward, [[]]), !.
 	
 change_direction(forward, backward).
 change_direction(backward, forward).
 	
-disnakehelper(Pattern, Cols, Rows, [P1 | PRest], [_ | CRest], forward, [G1 | GRest]) :-
+disnakehelper(Pattern, Cols, [R1 | RRest], [P1 | PRest], [_ | CRest], forward, [G1 | GRest]) :-
 	my_append(G1, [P1], NewG1),
-	disnakehelper(Pattern, Cols, Rows, PRest, CRest, forward, [NewG1 | GRest]).	
+	disnakehelper(Pattern, Cols, [R1 | RRest], PRest, CRest, forward, [NewG1 | GRest]).	
 	
-disnakehelper(Pattern, Cols, Rows, [P1 | PRest], [_ | CRest], backward, [G1 | GRest]) :-
+disnakehelper(Pattern, Cols, [R1 | RRest], [P1 | PRest], [_ | CRest], backward, [G1 | GRest]) :-
 	my_prepend(G1, [P1], NewG1),
-	disnakehelper(Pattern, Cols, Rows, PRest, CRest, backward, [NewG1 | GRest]).
+	disnakehelper(Pattern, Cols, [R1 | RRest], PRest, CRest, backward, [NewG1 | GRest]).
 	
 disnakehelper(Pattern, Cols, Rows, [], C, Direction, Grid) :-
 	disnakehelper(Pattern, Cols, Rows, Pattern, C, Direction, Grid).
 	
-disnakehelper(Pattern, Cols, [_ | RRest], P, [], Direction, Grid) :-
+disnakehelper(Pattern, Cols, [_, R2 | RRest], P, [], Direction, Grid) :-
 	my_prepend(Grid, [[]], NewGrid),
 	change_direction(Direction, NewDirection),
-	disnakehelper(Pattern, Cols, RRest, P, Cols, NewDirection, NewGrid).
+	disnakehelper(Pattern, Cols, [R2 | RRest], P, Cols, NewDirection, NewGrid).
 	
-disnakehelper(_, _, [], _, [], _, Grid) :-
+disnakehelper(_, _, [_], _, [], _, Grid) :-
 	my_reverse(Grid, GridRev),
 	write_grid(GridRev).
 
