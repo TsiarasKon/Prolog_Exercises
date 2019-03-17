@@ -32,7 +32,7 @@ write_grid([R1 | RRest]) :-
 % disnake:
 
 disnake(Pattern, Cols, Rows) :-
-	disnakehelper(Pattern, Cols, Rows, Pattern, Cols, forward, [[]]), !.
+	disnakehelper(Pattern, Cols, Rows, Pattern, Cols, forward, [[]]).
 	
 change_direction(forward, backward).
 change_direction(backward, forward).
@@ -56,7 +56,3 @@ disnakehelper(Pattern, Cols, [_, R2 | RRest], P, [], Direction, Grid) :-
 disnakehelper(_, _, [_], _, [], _, Grid) :-
 	my_reverse(Grid, GridRev),
 	write_grid(GridRev).
-
-
-% disnake([a,b,c,d,e,f,g], [_,_,_,_,_,_,_,_,_,_,_], [_,_,_,_,_,_]).
-% disnake([0,1,2,3,4,5,6,7,8,9], [_,_,_,_], [_,_,_]).
