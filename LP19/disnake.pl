@@ -30,6 +30,11 @@ write_grid([R1 | RRest]) :-
 
 
 % disnake:
+/* The snake is being built in a grid first, and then the grid is printed at the end. 
+ * At first, the pattern is repeated character by character in the forward direction.
+ * Each time the end of a row is reached, the direction is changed.
+ * Each time the pattern is depleted, it is replenished.
+ * This process ends when we run out of rows. */
 
 disnake(Pattern, Cols, Rows) :-
 	disnakehelper(Pattern, Cols, Rows, Pattern, Cols, forward, [[]]).
