@@ -10,29 +10,21 @@ numpart(N, L1, L2) :-
     [L1, L2] #:: 1..N,
     sumlist(L1, SumL),
     sumlist(L2, SumL),
-    % ascendingList(L1),
-    % ascendingList(L2),
-    ordered(<, L1),
-    ordered(<, L2),
-    firstList(L1, L2),
     append(L1, L2, L),
     fd_global:alldifferent(L),
-    search([L1, L2], 0, input_order, indomain, complete, []),
-    powList(L1, 2, SquareL1),
-    powList(L2, 2, SquareL2),
-    sumlist(SquareL1, SquareSumL),
-    sumlist(SquareL2, SquareSumL).
+    firstList(L1, L2),
+    ordered(<, L1),
+    ordered(<, L2),
+    search([L1, L2], 0, first_fail, indomain, complete, []),
+    powListSum(L1, 2, SquareSum),
+    powListSum(L2, 2, SquareSum).
 
-ascendingList([]).
-ascendingList([_]).
-ascendingList([X, Y | L]) :-
-    X #< Y,
-    ascendingList([Y | L]).
-
+% used to avoid duplicate results
 firstList([X | _], [Y | _]) :-
     X #< Y.
 
-powList([], _, []).
-powList([X | L], Pow, [PowX | PowL]) :-
-    PowX is X ^ Pow,
-    powList(L, Pow, PowL).
+powListSum([], _, 0).
+powListSum([X | L], Pow, PowSum) :-
+    powListSum(L, Pow, PowSumRest),
+    Curr is X ^ Pow,
+    PowSum is PowSumRest + Curr.
