@@ -11,6 +11,9 @@ numpart(N, L1, L2) :-
     sumlist(L1, SumL1),
     sumlist(L2, SumL2),
     SumL1 #= SumL2,
+    ascendingList(L1),
+    ascendingList(L2),
+    firstList(L1, L2),
     append(L1, L2, L),
     fd_global:alldifferent(L),
     % difference([1, 2, 3, 4, 5, 6, 7, 8], L1, L2),
@@ -20,11 +23,11 @@ numpart(N, L1, L2) :-
     % SumSquareL1 #= SumSquareL2,
     search([L1, L2], 0, first_fail, indomain, complete, []).
 
-% Testing:
-% belowN(N, LN, L) :-
-%     length(L, LN),
-%     L #:: 1..N,
-%     sumlist(L, SumL),
-%     SumL #< N,
-%     fd_global:alldifferent(L),
-%     search(L, 0, input_order, indomain, complete, []).
+ascendingList([]).
+ascendingList([_]).
+ascendingList([X, Y | L]) :-
+    X #< Y,
+    ascendingList([Y | L]).
+
+firstList([X | _], [Y | _]) :-
+    X #< Y.
