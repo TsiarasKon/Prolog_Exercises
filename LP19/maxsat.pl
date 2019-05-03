@@ -1,14 +1,15 @@
 :- lib(ic).
+:- lib(ic_global).
 :- lib(branch_and_bound).
 :- lib(listut).
 
-myCount([], _, 0).
-myCount([X | L], X, N1) :-
-    myCount(L, X, N),
-    N1 is N + 1.
-myCount([Y | L], X, N) :-
-    Y \= X,
-    myCount(L, X, N).
+% myCount([], _, 0).
+% myCount([X | L], X, N1) :-
+%     myCount(L, X, N),
+%     N1 is N + 1.
+% myCount([Y | L], X, N) :-
+%     Y \= X,
+%     myCount(L, X, N).
 
 evalClause([], _, 0).
 evalClause([L | _], S, 1) :-
@@ -33,6 +34,6 @@ maxsat(NV, NC, D, F, S, M) :-
     create_formula(NV, NC, D, F),
     length(S, NV),
     S #:: 0..1,
-    myCount(S, 1, M),
-    % NegM #:: -M,
-    bb_min(labeling(S), M, _).
+    occurrences(1, S, M),
+    NegM #= -M,
+    bb_min(labeling(S), NegM, _).
