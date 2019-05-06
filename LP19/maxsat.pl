@@ -2,15 +2,15 @@
 :- lib(branch_and_bound).
 :- lib(listut).
 
-evalLiteral(L, S, Elem) :-
+evalLiteral(L, S, V) :-
     L > 0,
-    nth1(L, S, Elem).
-evalLiteral(L, S, Elem1) :-
+    nth1(L, S, V).
+evalLiteral(L, S, V1) :-
     L < 0,
     Lindex is -L,
-    nth1(Lindex, S, Elem),
-    Elem1 #:: 0..1,
-    Elem1 #\= Elem.
+    nth1(Lindex, S, V),
+    V1 #:: 0..1,
+    V1 #\= V.
 
 evalClause([], _, 0).
 evalClause([L | Rest], S, FinalV) :-
@@ -25,11 +25,7 @@ evalCNF([C | Rest], S, M1) :-
     M1 #= M + Value.
 
 maxsat(NV, NC, D, F, S, M) :-
-    % create_formula(NV, NC, D, F),
-    % F = [[-4], [-4, -5], [3, -4], [-1], [-2, 5], [], [1, 4],
-    % [3, 5], [], [4], [1, 2, -4, -5], [-3], [-4], [-3], [],
-    % [1], [-5], [1, -5], [], [1, -4]],
-    F = [[1,-2,4],[-1,2],[-1,-2,3],[-2,-4],[2,-3],[1,3],[-3,4]],
+    create_formula(NV, NC, D, F),
     length(S, NV),
     S #:: 0..1,
     evalCNF(F, S, M),
