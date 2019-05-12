@@ -1,14 +1,19 @@
 :- lib(ic).
 :- lib(branch_and_bound).
-:- lib(listut).
+
+my_nth1(1, [X | _], X).
+my_nth1(N, [_ | L], Y) :-
+    N > 1,
+    N1 is N - 1,
+    my_nth1(N1, L, Y).
 
 evalLiteral(L, S, V) :-
     L > 0,
-    nth1(L, S, V).
+    my_nth1(L, S, V).
 evalLiteral(L, S, V1) :-
     L < 0,
     Lindex is -L,
-    nth1(Lindex, S, V),
+    my_nth1(Lindex, S, V),
     V1 #:: 0..1,
     V1 #\= V.
 
@@ -30,5 +35,4 @@ maxsat(NV, NC, D, F, S, M) :-
     S #:: 0..1,
     evalCNF(F, S, M),
     NegM #= -M,
-    bb_min(labeling(S), NegM, _).
-    % bb_min(labeling(S), NegM, bb_options{solutions:all}).
+    bb_min(labeling(S), NegM, bb_options{strategy:dichotomic}).
