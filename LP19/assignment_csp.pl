@@ -1,22 +1,47 @@
+:- lib(ic).
+
 activity(a1, act(0,3)).
 activity(a2, act(4,6)).
 activity(a3, act(1,2)).
 
-assignment(NF, NP, ST, ASP, ASA) :-
+assignment_opt(NF, NP, ST, F, T, ASP, ASA, Cost) :-
 	NF == 0,
 	findall(A, activity(A, act(_, _)), AL),
 	createStartingASP(NP, StartingASP),
+	calcD(AL, D),
+	calcA(NP, D, A),
 	assignmentHelper(ST, RevASP, ASA, StartingASP, AL),
+	calcCost(RevASP, A, Cost),
 	reverse(RevASP, ASP).
 
-assignment(NF, NP, ST, ASP, ASA) :-
+assignment_opt(NF, NP, ST, F, T, ASP, ASA, Cost) :-
 	NF > 0,
 	findall(A, activity(A, act(_, _)), AL),
 	createStartingASP(NP, StartingASP),
 	length(ALNF, NF),
 	append(ALNF, _, AL),
+	calcD(ALNF, D),
+	calcA(NP, D, A),
 	assignmentHelper(ST, RevASP, ASA, StartingASP, ALNF),
+	calcCost(RevASP, A, Cost),
 	reverse(RevASP, ASP).
+
+calcD([], 0).
+calcD([A | AL], D) :-
+	calcD(AL, D1),
+	activity(A, act(AStart, AEnd)),
+	D is D1 + AEnd - AStart.
+
+calcA(NP, D, A) :-
+	NP > 0,
+	Fraction is D / NP,
+	round(Fraction, A).
+
+calcCost([], _, 0).
+calcCost([_ - _ - Wi | ASP], A, Cost) :-
+	calcCost(ASP, A, Cost1),
+	CurrCost is (A - Wi) ^ 2,
+	Cost is CurrCost + Cost1.
 
 createStartingASP(0, []).
 createStartingASP(N, [N - [] - 0 | ASPRest]) :-
