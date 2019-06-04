@@ -10,9 +10,11 @@ assignment_opt(NF, NP, ST, F, T, ASP, ASA, Cost) :-
 	createStartingASP(NP, StartingASP),
 	calcD(AL, D),
 	calcA(NP, D, A),
-	assignmentHelper(ST, RevASP, ASA, StartingASP, AL),
+	assignmentHelper(ST, RevASP, _, StartingASP, AL),
 	calcCost(RevASP, A, Cost),
-	reverse(RevASP, ASP).
+	reverse(RevASP, ASP),
+	generateASA(ASP, ASAunsorted),
+	sort(ASAunsorted, ASA).
 
 assignment_opt(NF, NP, ST, F, T, ASP, ASA, Cost) :-
 	NF > 0,
@@ -22,9 +24,11 @@ assignment_opt(NF, NP, ST, F, T, ASP, ASA, Cost) :-
 	append(ALNF, _, AL),
 	calcD(ALNF, D),
 	calcA(NP, D, A),
-	assignmentHelper(ST, RevASP, ASA, StartingASP, ALNF),
+	assignmentHelper(ST, RevASP, _, StartingASP, ALNF),
 	calcCost(RevASP, A, Cost),
-	reverse(RevASP, ASP).
+	reverse(RevASP, ASP),
+	generateASA(ASP, ASAunsorted),
+	sort(ASAunsorted, ASA).
 
 calcD([], 0).
 calcD([A | AL], D) :-
@@ -35,13 +39,23 @@ calcD([A | AL], D) :-
 calcA(NP, D, A) :-
 	NP > 0,
 	Fraction is D / NP,
-	round(Fraction, A).
+	A is integer(round(Fraction)).
 
 calcCost([], _, 0).
 calcCost([_ - _ - Wi | ASP], A, Cost) :-
 	calcCost(ASP, A, Cost1),
-	CurrCost is (A - Wi) ^ 2,
-	Cost is CurrCost + Cost1.
+	CurrCost #= (A - Wi) ^ 2,
+	Cost #= CurrCost + Cost1.
+
+generatePersonASA(_, [], []).
+generatePersonASA(N, [A | ALRest], [A - N | PersonASARest]) :-
+	generatePersonASA(N, ALRest, PersonASARest).
+
+generateASA([], []).
+generateASA([N - AL - _ | ASPRest], ASA) :-
+	generatePersonASA(N, AL, PersonASA),
+	generateASA(ASPRest, ASARest),
+	append(ASARest, PersonASA, ASA).
 
 createStartingASP(0, []).
 createStartingASP(N, [N - [] - 0 | ASPRest]) :-
