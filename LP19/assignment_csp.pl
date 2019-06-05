@@ -57,6 +57,21 @@ generateASA([N - AL - _ | ASPRest], ASA) :-
 	generateASA(ASPRest, ASARest),
 	append(ASARest, PersonASA, ASA).
 
+assignToPerson(N, [], N - [] - 0).
+assignToPerson(N, AL, N - [A | ALPersonRest] - TSum) :-
+	member(A, AL),
+	activity(A, act(AStart, AEnd)),
+	% sorted([A | ALPersonRest]),
+	delete(A, AL, AL1),
+	assignToPerson(N, AL1, N - ALPersonRest - TSum1),
+	listTimeCheck(ALPersonRest, AStart, AEnd),
+	Tsum #= TSum1 + AEnd - AStart.
+assignToPerson(N, AL, N - ALPerson - TSum) :-
+	member(A, AL),
+	delete(A, AL, AL1),
+	assignToPerson(N, AL1, N - ALPerson - TSum).
+
+
 createStartingASP(0, []).
 createStartingASP(N, [N - [] - 0 | ASPRest]) :-
 	N > 0,
@@ -90,5 +105,5 @@ firstOfItsKind(N - NL, [_ - L - _ | ASPRest]) :-
 listTimeCheck([], _, _).
 listTimeCheck([PastA | NL], AStart, AEnd) :-
 	activity(PastA, act(PastAStart, PastAEnd)),
-	(AEnd < PastAStart; AStart > PastAEnd),
+	(AEnd #< PastAStart; AStart #> PastAEnd),
 	listTimeCheck(NL, AStart, AEnd).
