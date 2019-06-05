@@ -71,6 +71,18 @@ assignToPerson(N, AL, N - ALPerson - TSum) :-
 	delete(A, AL, AL1),
 	assignToPerson(N, AL1, N - ALPerson - TSum).
 
+constraintASAMembers(_, _, []).
+constraintASAMembers(NP, ALLen, [A - N | ASA]) :-	
+	A #:: 1..ALLen,
+	N #:: 1..NP,
+	constraintASAMembers(NP, ALLen, ASA).
+
+constraintASA(NP, AL, ASA) :-
+	ALLen is length(AL),
+	length(ASA, ALLen),
+	constraintASAMembers(NP, ALLen, ASA).
+
+%%%
 
 createStartingASP(0, []).
 createStartingASP(N, [N - [] - 0 | ASPRest]) :-
