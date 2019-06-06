@@ -46,7 +46,7 @@ calcCost([_ - _ - Wi | ASP], A, Cost) :-
 	calcCost(ASP, A, Cost1),
 	CurrCost #= (A - Wi) ^ 2,
 	Cost #= CurrCost + Cost1.
-
+%%%%
 generatePersonASA(_, [], []).
 generatePersonASA(N, [A | ALRest], [A - N | PersonASARest]) :-
 	generatePersonASA(N, ALRest, PersonASARest).
@@ -56,6 +56,25 @@ generateASA([N - AL - _ | ASPRest], ASA) :-
 	generatePersonASA(N, AL, PersonASA),
 	generateASA(ASPRest, ASARest),
 	append(ASARest, PersonASA, ASA).
+
+
+generatePersonASP(_, [], [], 0).
+generatePersonASP(N, [A - N | ASARest], [A | ALRest], TSum) :-
+	activity(A, act(AStart, AEnd)),
+	generatePersonASP(N, ASARest, ALRest, TSum1),
+	TSum is TSum1 + AEnd - AStart.
+generatePersonASP(N, [A - NOther | ASARest], AL, TSum) :-
+	NOther \= N,
+	generatePersonASP(N, ASARest, AL, TSum).
+
+generateASP(NP, N, _, []) :-
+	N > NP.
+generateASP(NP, N, ASA, [N - AL - TSum | ASPRest]) :-		% call with N = 1
+	N =< NP,
+	generatePersonASP(N, ASA, AL, TSum),
+	N1 is N + 1,
+	generateASP(NP, N1, ASA, ASPRest).
+%%%
 
 assignToPerson(N, [], N - [] - 0).
 assignToPerson(N, AL, N - [A | ALPersonRest] - TSum) :-
@@ -71,16 +90,25 @@ assignToPerson(N, AL, N - ALPerson - TSum) :-
 	delete(A, AL, AL1),
 	assignToPerson(N, AL1, N - ALPerson - TSum).
 
-constraintASAMembers(_, _, []).
-constraintASAMembers(NP, ALLen, [A - N | ASA]) :-	
-	A #:: 1..ALLen,
+constraintASAMembers(_, [], []).
+constraintASAMembers(NP, [ANum | ALNumsRest], [ANum - N | ASA]) :-
 	N #:: 1..NP,
-	constraintASAMembers(NP, ALLen, ASA).
+	constraintASAMembers(NP, ALNumsRest, ASA).
 
 constraintASA(NP, AL, ASA) :-
 	ALLen is length(AL),
-	length(ASA, ALLen),
-	constraintASAMembers(NP, ALLen, ASA).
+	length(ALNums, ALLen),
+	ALNums #:: 1..ALLen,
+	alldifferent(ALNums),
+	constraintASAMembers(NP, ALNums, ASA).
+
+listlistTimeCheck([]).
+listlistTimeCheck([A | NL]) :-
+	activity(A, act(AStart, AEnd)),
+	listTimeCheck(NL, AStart, AEnd),
+	listlistTimeCheck(NL).
+
+% pair-wise checking?
 
 %%%
 
