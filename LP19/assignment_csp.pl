@@ -4,31 +4,39 @@ activity(a1, act(0,3)).
 activity(a2, act(4,6)).
 activity(a3, act(1,2)).
 
-assignment_opt(NF, NP, ST, F, T, ASP, ASA, Cost) :-
-	NF == 0,
-	findall(A, activity(A, act(_, _)), AL),
-	createStartingASP(NP, StartingASP),
-	calcD(AL, D),
-	calcA(NP, D, A),
-	assignmentHelper(ST, RevASP, _, StartingASP, AL),
-	calcCost(RevASP, A, Cost),
-	reverse(RevASP, ASP),
-	generateASA(ASP, ASAunsorted),
-	sort(ASAunsorted, ASA).
+% https://stackoverflow.com/questions/48937374/clp-constraints-on-structured-variables
 
 assignment_opt(NF, NP, ST, F, T, ASP, ASA, Cost) :-
-	NF > 0,
-	findall(A, activity(A, act(_, _)), AL),
-	createStartingASP(NP, StartingASP),
-	length(ALNF, NF),
-	append(ALNF, _, AL),
-	calcD(ALNF, D),
+	NF == 0,
+	findall((A, AStart, AEnd), activity(A, act(AStart, AEnd)), AL),
+	generateIntAL(AL, 1, IntAL),
+	calcD(AL, D),
 	calcA(NP, D, A),
-	assignmentHelper(ST, RevASP, _, StartingASP, ALNF),
+	constraintASA(NP, AL, ASA),
+    bb_min(labeling(ASA), Cost, _),
 	calcCost(RevASP, A, Cost),
 	reverse(RevASP, ASP),
-	generateASA(ASP, ASAunsorted),
+	generateASP(NP, 1, ASA, ASP),
 	sort(ASAunsorted, ASA).
+
+% assignment_opt(NF, NP, ST, F, T, ASP, ASA, Cost) :-
+% 	NF > 0,
+% 	findall(A, activity(A, act(_, _)), AL),
+% 	createStartingASP(NP, StartingASP),
+% 	length(ALNF, NF),
+% 	append(ALNF, _, AL),
+% 	calcD(ALNF, D),
+% 	calcA(NP, D, A),
+% 	assignmentHelper(ST, RevASP, _, StartingASP, ALNF),
+% 	calcCost(RevASP, A, Cost),
+% 	reverse(RevASP, ASP),
+% 	generateASA(ASP, ASAunsorted),
+% 	sort(ASAunsorted, ASA).
+
+generateIntAL([], _, []).
+generateIntAL([(_, AStart, AEnd) | ALRest], Index, [(Index, AStart, AEnd) | IntALRest]) :-
+	Index1 is Index + 1,
+	generateIntAL(ALRest, Index1, IntALRest).
 
 calcD([], 0).
 calcD([A | AL], D) :-
@@ -46,6 +54,20 @@ calcCost([_ - _ - Wi | ASP], A, Cost) :-
 	calcCost(ASP, A, Cost1),
 	CurrCost #= (A - Wi) ^ 2,
 	Cost #= CurrCost + Cost1.
+
+calcCostASA(NP, CurrN, _, _, _, 0) :-
+	CurrN > NP, !.
+calcCostASA(NP, CurrN, [], ASA, A, Cost) :-
+	NewN is CurrN + 1,
+	calcCostASA(NP, NewN, ASA, ASA, A, Cost).
+calcCostASA(NP, CurrN, [_ - N | ASARest], ASA, A, Cost) :-
+	N #= CurrN,
+	calcCostASA(NP, CurrN, ASARest, ASA, A, Cost1),
+	CurrCost #= (A - Wi) ^ 2,
+	Cost #= CurrCost + Cost1.
+calcCostASA(NP, CurrN, [_ - N | ASARest], ASA, A, Cost) :-
+	CurrN #\= N,
+	calcCostASA(NP, CurrN, ASARest, ASA, A, Cost).
 %%%%
 generatePersonASA(_, [], []).
 generatePersonASA(N, [A | ALRest], [A - N | PersonASARest]) :-
@@ -95,12 +117,12 @@ constraintASAMembers(NP, [ANum | ALNumsRest], [ANum - N | ASA]) :-
 	N #:: 1..NP,
 	constraintASAMembers(NP, ALNumsRest, ASA).
 
-constraintASA(NP, AL, ASA) :-
+constraintASA(NP, IntAL, ASA) :-
 	ALLen is length(AL),
 	length(ALNums, ALLen),
 	ALNums #:: 1..ALLen,
 	alldifferent(ALNums),
-	constraintASAMembers(NP, ALNums, ASA).
+	constraintASAMembers(NP, IntAL, ASA).
 
 listlistTimeCheck([]).
 listlistTimeCheck([A | NL]) :-
@@ -108,7 +130,19 @@ listlistTimeCheck([A | NL]) :-
 	listTimeCheck(NL, AStart, AEnd),
 	listlistTimeCheck(NL).
 
-% pair-wise checking?
+timeCheckNLX([]).
+timeCheckNLX([_]).
+timeCheckNLX([(_, _, A1End), (_, A2Start, A2End) | NLRest]) :-
+	A1End #< A2Start,
+	timeCheckNLX([(_, A2Start, A2End) | NLRest]).
+	% ST check?
+
+% timeCheckNLX(ST, [], _).
+% timeCheckNLX(ST, [(_, AStart, AEnd)]) :-
+% 	ST #>= AEnd - AStart.
+% timeCheckNLX(ST, [(_, A1Start, A1End), (_, A2Start, A2End) | NLRest], TSum) :-
+% 	A1End #< A2Start,
+% 	timeCheckNLX([(_, A2Start, A2End) | NLRest]).
 
 %%%
 
