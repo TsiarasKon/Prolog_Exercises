@@ -21,6 +21,8 @@ activity(a13, act(17,19)).
 activity(a14, act(18,20)).
 activity(a15, act(19,20)).
 
+% assignment_opt(0, 3, 14, _, _, Ws, ASAN, Cost).
+
 insert_sort(List, Sorted) :- 
 	i_sort(List, [], Sorted).
 i_sort([], Acc, Acc).
@@ -36,7 +38,7 @@ insert((A, AStart, AEnd), [], [(A, AStart, AEnd)]).
 
 assignment_opt(NF, NP, ST, F, T, ASP, ASA, Cost) :-
 	NF == 0,
-	findall((A, AStart, AEnd), activity(A, act(AStart, AEnd)), AL),
+	findall((A, AStart, AEnd), activity(A, act(AStart, AEnd)), ALun),
 	insert_sort(ALun, AL),
 	% generateALs(AL, ALStart, ALEnd),
 	calcD(AL, D),
@@ -44,6 +46,7 @@ assignment_opt(NF, NP, ST, F, T, ASP, ASA, Cost) :-
 	ALLen is length(AL),
 	length(ASAN, ALLen),
 	ASAN #:: 1..NP,
+	constraintASAN(AL, AL, ASAN, ASAN, NP, 1, -1),
 	length(Ws, NP),
 	Ws #:: 0..ST,
 	calcWs(AL, AL, ASAN, ASAN, 1, Ws),
@@ -63,6 +66,19 @@ calcWs(AL, [], ASAN, [], N, [0 | WsRest]) :-
 calcWs(AL, [(_, AStart, AEnd) | ALRest], ASAN, [AN | ASANRest], N, [WiNew | WsRest]) :-
 	(AN #= N, WiNew #= Wi + AEnd - AStart) or (AN #\= N, WiNew #= Wi),
 	calcWs(AL, ALRest, ASAN, ASANRest, N, [Wi | WsRest]).
+
+% AL=[(1,0,3),(3,1,2),(2,4,6)], ASAN=[1,2,1], constraintASAN(AL,AL,ASAN,ASAN,2,1,0).
+
+constraintASAN(_, _, _, _, NP, N, _) :-
+	N > NP.		%% !
+constraintASAN(AL, [], ASAN, [], NP, N, _) :-
+	N =< NP,
+	N1 is N + 1,
+	constraintASAN(AL, AL, ASAN, ASAN, NP, N1, -1).
+constraintASAN(AL, [(_, AStart, AEnd) | ALRest], ASAN, [AN | ASANRest], NP, N, PrevLatestN) :-
+	N =< NP,
+	(AN #= N, PrevLatestN #=< AStart + 1, NextLatestN #= AEnd) or (AN #\= N, NextLatestN #= PrevLatestN),
+	constraintASAN(AL, ALRest, ASAN, ASANRest, NP, N, NextLatestN).
 
 % assignment_opt(NF, NP, ST, F, T, ASP, ASA, Cost) :-
 % 	NF > 0,
