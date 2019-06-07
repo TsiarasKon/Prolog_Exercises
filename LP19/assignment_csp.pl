@@ -9,15 +9,16 @@ activity(a3, act(1,2)).
 assignment_opt(NF, NP, ST, F, T, ASP, ASA, Cost) :-
 	NF == 0,
 	findall((A, AStart, AEnd), activity(A, act(AStart, AEnd)), AL),
-	generateIntAL(AL, 1, IntAL),
-	calcD(AL, D),
+	generateALs(AL, ALStart, ALEnd),
+	calcD(ALStart, ALEnd, D),
 	calcA(NP, D, A),
-	constraintASA(NP, AL, ASA),
-    bb_min(labeling(ASA), Cost, _),
-	calcCost(RevASP, A, Cost),
-	reverse(RevASP, ASP),
-	generateASP(NP, 1, ASA, ASP),
-	sort(ASAunsorted, ASA).
+	ALLen is length(AL),
+	constraintASA(NP, ALLen, ASAN),
+	generateASP(NP, 1, ALLen, ALStart, ALEnd, ASA, ST, ASP),
+	calcCost(ASP, A, Cost),
+    bb_min(labeling(ASA), Cost, _).
+	% reverse(RevASP, ASP),
+	% sort(ASAunsorted, ASA).
 
 % assignment_opt(NF, NP, ST, F, T, ASP, ASA, Cost) :-
 % 	NF > 0,
@@ -33,15 +34,13 @@ assignment_opt(NF, NP, ST, F, T, ASP, ASA, Cost) :-
 % 	generateASA(ASP, ASAunsorted),
 % 	sort(ASAunsorted, ASA).
 
-generateIntAL([], _, []).
-generateIntAL([(_, AStart, AEnd) | ALRest], Index, [(Index, AStart, AEnd) | IntALRest]) :-
-	Index1 is Index + 1,
-	generateIntAL(ALRest, Index1, IntALRest).
+generateALs([], [], []).
+generateALs([activity(_, act(AStart, AEnd)) | ALRest], [AStart | ALStartRest], [AEnd | ALEndRest]) :-
+	generateALs(ALRest, ALStartRest, ALEndRest).
 
-calcD([], 0).
-calcD([A | AL], D) :-
-	calcD(AL, D1),
-	activity(A, act(AStart, AEnd)),
+calcD([], [], 0).
+calcD([AStart | ALStartRest], [AEnd | ALEndRest], D) :-
+	calcD(ALStartRest, ALEndRest, D1),
 	D is D1 + AEnd - AStart.
 
 calcA(NP, D, A) :-
@@ -80,22 +79,26 @@ generateASA([N - AL - _ | ASPRest], ASA) :-
 	append(ASARest, PersonASA, ASA).
 
 
-generatePersonASP(_, [], [], 0).
-generatePersonASP(N, [A - N | ASARest], [A | ALRest], TSum) :-
-	activity(A, act(AStart, AEnd)),
-	generatePersonASP(N, ASARest, ALRest, TSum1),
-	TSum is TSum1 + AEnd - AStart.
-generatePersonASP(N, [A - NOther | ASARest], AL, TSum) :-
-	NOther \= N,
-	generatePersonASP(N, ASARest, AL, TSum).
+generatePersonASP(_, _, _, _, [], _, [], 0).
+generatePersonASP(N, ALLen, ALStart, ALEnd, [AN - N | ASARest], ST, [ANPerson | ALPersonRest], TSum) :-
+	AN #:: 1..ALLen,
+	AN #= ANPerson,
+	generatePersonASP(N, ALLen, ALStart, ALEnd, ASARest, ST, ALPersonRest, TSum1),
+	element(ANPerson, ALStart, AStart),
+	element(ANPerson, ALEnd, AEnd),
+	TSum #= TSum1 + AEnd - AStart.
+generatePersonASP(N, ALLen, ALStart, ALEnd, [A - NOther | ASARest], ST, AL, TSum) :-
+	NOther #\= N,
+	generatePersonASP(N, ALLen, ALStart, ALEnd, ASARest, ST, AL, TSum).
 
-generateASP(NP, N, _, []) :-
+generateASP(NP, N, _, _, _, _, _, []) :-
 	N > NP.
-generateASP(NP, N, ASA, [N - AL - TSum | ASPRest]) :-		% call with N = 1
+generateASP(NP, N, ALLen, ALStart, ALEnd, ASA, ST, [N - ALPerson - TSum | ASPRest]) :-		% call with N = 1
 	N =< NP,
-	generatePersonASP(N, ASA, AL, TSum),
+	TSum #:: 0..ST,
+	generatePersonASP(N, ALLen, ALStart, ALEnd, ASA, ST, ALPerson, TSum),
 	N1 is N + 1,
-	generateASP(NP, N1, ASA, ASPRest).
+	generateASP(NP, N1, ALStart, ALEnd, ALLen, ASA, ST, ASPRest).
 %%%
 
 assignToPerson(N, [], N - [] - 0).
@@ -113,16 +116,15 @@ assignToPerson(N, AL, N - ALPerson - TSum) :-
 	assignToPerson(N, AL1, N - ALPerson - TSum).
 
 constraintASAMembers(_, [], []).
-constraintASAMembers(NP, [ANum | ALNumsRest], [ANum - N | ASA]) :-
+constraintASAMembers(NP, [ALNums | ALNumsRest], [ANum - N | ASAN]) :-
 	N #:: 1..NP,
-	constraintASAMembers(NP, ALNumsRest, ASA).
+	constraintASAMembers(NP, ALNumsRest, ASAN).
 
-constraintASA(NP, IntAL, ASA) :-
-	ALLen is length(AL),
+constraintASA(NP, ALLen, ASAN) :-
 	length(ALNums, ALLen),
 	ALNums #:: 1..ALLen,
 	alldifferent(ALNums),
-	constraintASAMembers(NP, IntAL, ASA).
+	constraintASAMembers(NP, ALNums, ASAN).
 
 listlistTimeCheck([]).
 listlistTimeCheck([A | NL]) :-
