@@ -9,16 +9,54 @@ activity(a3, act(1,2)).
 assignment_opt(NF, NP, ST, F, T, ASP, ASA, Cost) :-
 	NF == 0,
 	findall((A, AStart, AEnd), activity(A, act(AStart, AEnd)), AL),
-	generateALs(AL, ALStart, ALEnd),
-	calcD(ALStart, ALEnd, D),
-	calcA(NP, D, A),
+	% generateALs(AL, ALStart, ALEnd),
+	% calcD(ALStart, ALEnd, D),
+	% calcA(NP, D, A),
 	ALLen is length(AL),
-	constraintASA(NP, ALLen, ASAN),
-	generateASP(NP, 1, ALLen, ALStart, ALEnd, ASA, ST, ASP),
-	calcCost(ASP, A, Cost),
-    bb_min(labeling(ASA), Cost, _).
+	length(ASAN, ALLen),
+	ASAN #:: 1..NP,
+	length(Ws, NP),
+	Ws #:: 0..ST,
+	% assignASAN(NP, AL, ASAN, Ws),
+	calcWs(AL, AL, ASAN, ASAN, 1, Ws),
+	ASP = Ws,
+	ASA = ASAN.
+	% generateASP(NP, 1, ALLen, ALStart, ALEnd, ASA, ST, ASP),
+	% calcCost(ASP, A, Cost),
+    % bb_min(labeling(ASA), Cost, _).
 	% reverse(RevASP, ASP),
 	% sort(ASAunsorted, ASA).
+
+calcWs(_, _, _, _, _, []).
+calcWs(AL, [], ASAN, [], N, [0 | WsRest]) :-
+	N1 is N + 1,
+	calcWs(AL, AL, ASAN, ASAN, N1, WsRest).
+calcWs(AL, [(_, AStart, AEnd) | ALRest], ASAN, [AN | ASANRest], N, [WiNew | WsRest]) :-
+	(AN #= N, WiNew #= Wi + AEnd - AStart) or (AN #\= N, WiNew #= Wi),
+	calcWs(AL, ALRest, ASAN, ASANRest, N, [Wi | WsRest]).
+% calcWs(AL, [(_, AStart, AEnd) | ALRest], ASAN, [AN | ASANRest], N, [WiNew | WsRest]) :-
+% 	AN #= N,
+% 	calcWs(AL, ALRest, ASAN, ASANRest, N, [Wi | WsRest]),
+% 	WiNew #= Wi + AEnd - AStart.
+% calcWs(AL, [(_, AStart, AEnd) | ALRest], ASAN, [AN | ASANRest], N, [Wi | WsRest]) :-
+% 	AN #\= N,
+% 	calcWs(AL, ALRest, ASAN, ASANRest, N, [Wi | WsRest]).
+
+
+
+% initWs([]).
+% initWs([Wi | Ws]) :-
+% 	Wi #= 0,
+% 	initWs(Ws).
+% 
+% assignASAN(_, [], [], Ws) :-
+% 	initWs(Ws).
+% assignASAN(NP, [(_, Astart, AEnd) | ALRest], [NA | NAs], Ws) :-
+% 	NA #:: 1..NP,
+% 	element(NA, Ws, Wi),
+% 	Wi #= Wi + AEnd - AStart,
+% 	assignASA(NP, ALRest, NAs, Ws).
+
 
 % assignment_opt(NF, NP, ST, F, T, ASP, ASA, Cost) :-
 % 	NF > 0,
@@ -183,3 +221,5 @@ listTimeCheck([PastA | NL], AStart, AEnd) :-
 	activity(PastA, act(PastAStart, PastAEnd)),
 	(AEnd #< PastAStart; AStart #> PastAEnd),
 	listTimeCheck(NL, AStart, AEnd).
+
+%%%%%%%%%%
