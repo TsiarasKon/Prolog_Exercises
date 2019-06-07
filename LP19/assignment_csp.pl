@@ -1,29 +1,58 @@
 :- lib(ic).
+:- lib(branch_and_bound).
 
-activity(a1, act(0,3)).
-activity(a2, act(4,6)).
-activity(a3, act(1,2)).
+% activity(a1, act(0,3)).
+% activity(a2, act(4,6)).
+% activity(a3, act(1,2)).
 
-% https://stackoverflow.com/questions/48937374/clp-constraints-on-structured-variables
+activity(a01, act(0,3)).
+activity(a02, act(0,4)).
+activity(a03, act(1,5)).
+activity(a04, act(4,6)).
+activity(a05, act(6,8)).
+activity(a06, act(6,9)).
+activity(a07, act(9,10)).
+activity(a08, act(9,13)).
+activity(a09, act(11,14)).
+activity(a10, act(12,15)).
+activity(a11, act(14,17)).
+activity(a12, act(16,18)).
+activity(a13, act(17,19)).
+activity(a14, act(18,20)).
+activity(a15, act(19,20)).
+
+insert_sort(List, Sorted) :- 
+	i_sort(List, [], Sorted).
+i_sort([], Acc, Acc).
+i_sort([(A, AStart, AEnd) | T], Acc, Sorted) :- 
+	insert((A, AStart, AEnd), Acc, NAcc), i_sort(T, NAcc, Sorted).
+   
+insert((A1, AStart1, AEnd1), [(A2, AStart2, AEnd2) | T], [(A2, AStart2, AEnd2) | NT]) :-
+	AStart1 > AStart2,
+	insert((A1, AStart1, AEnd1), T, NT).
+insert((A1, AStart1, AEnd1), [(A2, AStart2, AEnd2) | T], [(A1, AStart1, AEnd1), (A2, AStart2, AEnd2) | T]) :-
+	AStart1 =< AStart2.
+insert((A, AStart, AEnd), [], [(A, AStart, AEnd)]).
 
 assignment_opt(NF, NP, ST, F, T, ASP, ASA, Cost) :-
 	NF == 0,
 	findall((A, AStart, AEnd), activity(A, act(AStart, AEnd)), AL),
+	insert_sort(ALun, AL),
 	% generateALs(AL, ALStart, ALEnd),
-	% calcD(ALStart, ALEnd, D),
-	% calcA(NP, D, A),
+	calcD(AL, D),
+	calcA(NP, D, A),
 	ALLen is length(AL),
 	length(ASAN, ALLen),
 	ASAN #:: 1..NP,
 	length(Ws, NP),
 	Ws #:: 0..ST,
-	% assignASAN(NP, AL, ASAN, Ws),
 	calcWs(AL, AL, ASAN, ASAN, 1, Ws),
+	calcCost(Ws, A, Cost),
 	ASP = Ws,
-	ASA = ASAN.
+	ASA = ASAN,
 	% generateASP(NP, 1, ALLen, ALStart, ALEnd, ASA, ST, ASP),
 	% calcCost(ASP, A, Cost),
-    % bb_min(labeling(ASA), Cost, _).
+    bb_min(labeling(ASAN), Cost, _).
 	% reverse(RevASP, ASP),
 	% sort(ASAunsorted, ASA).
 
@@ -34,29 +63,6 @@ calcWs(AL, [], ASAN, [], N, [0 | WsRest]) :-
 calcWs(AL, [(_, AStart, AEnd) | ALRest], ASAN, [AN | ASANRest], N, [WiNew | WsRest]) :-
 	(AN #= N, WiNew #= Wi + AEnd - AStart) or (AN #\= N, WiNew #= Wi),
 	calcWs(AL, ALRest, ASAN, ASANRest, N, [Wi | WsRest]).
-% calcWs(AL, [(_, AStart, AEnd) | ALRest], ASAN, [AN | ASANRest], N, [WiNew | WsRest]) :-
-% 	AN #= N,
-% 	calcWs(AL, ALRest, ASAN, ASANRest, N, [Wi | WsRest]),
-% 	WiNew #= Wi + AEnd - AStart.
-% calcWs(AL, [(_, AStart, AEnd) | ALRest], ASAN, [AN | ASANRest], N, [Wi | WsRest]) :-
-% 	AN #\= N,
-% 	calcWs(AL, ALRest, ASAN, ASANRest, N, [Wi | WsRest]).
-
-
-
-% initWs([]).
-% initWs([Wi | Ws]) :-
-% 	Wi #= 0,
-% 	initWs(Ws).
-% 
-% assignASAN(_, [], [], Ws) :-
-% 	initWs(Ws).
-% assignASAN(NP, [(_, Astart, AEnd) | ALRest], [NA | NAs], Ws) :-
-% 	NA #:: 1..NP,
-% 	element(NA, Ws, Wi),
-% 	Wi #= Wi + AEnd - AStart,
-% 	assignASA(NP, ALRest, NAs, Ws).
-
 
 % assignment_opt(NF, NP, ST, F, T, ASP, ASA, Cost) :-
 % 	NF > 0,
@@ -76,9 +82,9 @@ generateALs([], [], []).
 generateALs([activity(_, act(AStart, AEnd)) | ALRest], [AStart | ALStartRest], [AEnd | ALEndRest]) :-
 	generateALs(ALRest, ALStartRest, ALEndRest).
 
-calcD([], [], 0).
-calcD([AStart | ALStartRest], [AEnd | ALEndRest], D) :-
-	calcD(ALStartRest, ALEndRest, D1),
+calcD([], 0).
+calcD([(A, AStart, AEnd) | ALRest], D) :-
+	calcD(ALRest, D1),
 	D is D1 + AEnd - AStart.
 
 calcA(NP, D, A) :-
@@ -87,8 +93,8 @@ calcA(NP, D, A) :-
 	A is integer(round(Fraction)).
 
 calcCost([], _, 0).
-calcCost([_ - _ - Wi | ASP], A, Cost) :-
-	calcCost(ASP, A, Cost1),
+calcCost([Wi | WsRest], A, Cost) :-
+	calcCost(WsRest, A, Cost1),
 	CurrCost #= (A - Wi) ^ 2,
 	Cost #= CurrCost + Cost1.
 
