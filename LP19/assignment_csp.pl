@@ -40,7 +40,6 @@ assignment_opt(NF, NP, ST, F, T, ASP, ASA, Cost) :-
 	NF == 0,
 	findall((A, AStart, AEnd), activity(A, act(AStart, AEnd)), ALun),
 	insert_sort(ALun, AL),
-	% generateALs(AL, ALStart, ALEnd),
 	calcD(AL, D),
 	calcA(NP, D, A),
 	ALLen is length(AL),
@@ -51,13 +50,10 @@ assignment_opt(NF, NP, ST, F, T, ASP, ASA, Cost) :-
 	Ws #:: 0..ST,
 	calcWs(AL, AL, ASAN, ASAN, 1, Ws),
 	calcCost(Ws, A, Cost),
-	ASP = Ws,
-	ASA = ASAN,
-	% generateASP(NP, 1, ALLen, ALStart, ALEnd, ASA, ST, ASP),
-	% calcCost(ASP, A, Cost),
-    bb_min(labeling(ASAN), Cost, _).
-	% reverse(RevASP, ASP),
-	% sort(ASAunsorted, ASA).
+	bb_min(labeling(ASAN), Cost, _),
+	generateASA(AL, ASAN, ASAun),
+	sort(ASAun, ASA),
+	generateASP(ASA, Ws, 1, ASP).
 
 calcWs(_, _, _, _, _, []).
 calcWs(AL, [], ASAN, [], N, [0 | WsRest]) :-
@@ -67,18 +63,35 @@ calcWs(AL, [(_, AStart, AEnd) | ALRest], ASAN, [AN | ASANRest], N, [WiNew | WsRe
 	(AN #= N, WiNew #= Wi + AEnd - AStart) or (AN #\= N, WiNew #= Wi),
 	calcWs(AL, ALRest, ASAN, ASANRest, N, [Wi | WsRest]).
 
-% AL=[(1,0,3),(3,1,2),(2,4,6)], ASAN=[1,2,1], constraintASAN(AL,AL,ASAN,ASAN,2,1,0).
 
 constraintASAN(_, _, _, _, NP, N, _) :-
-	N > NP.		%% !
+	N > NP, !.
 constraintASAN(AL, [], ASAN, [], NP, N, _) :-
-	N =< NP,
+	% N =< NP,
 	N1 is N + 1,
 	constraintASAN(AL, AL, ASAN, ASAN, NP, N1, -1).
 constraintASAN(AL, [(_, AStart, AEnd) | ALRest], ASAN, [AN | ASANRest], NP, N, PrevLatestN) :-
-	N =< NP,
-	(AN #= N, PrevLatestN #=< AStart + 1, NextLatestN #= AEnd) or (AN #\= N, NextLatestN #= PrevLatestN),
+	% N =< NP,
+	(AN #= N, PrevLatestN #< AStart, NextLatestN #= AEnd) or (AN #\= N, NextLatestN #= PrevLatestN),
 	constraintASAN(AL, ALRest, ASAN, ASANRest, NP, N, NextLatestN).
+
+generateASA([], [], []).
+generateASA([(A, _, _) | ALRest], [N | ASANRest], [A - N | ASARest]) :-
+	generateASA(ALRest, ASANRest, ASARest).
+
+generatePersonAL([], _, []).
+generatePersonAL([A - N | ASARest], N, [A | ALRest]) :-
+	generatePersonAL(ASARest, N, ALRest).
+generatePersonAL([A - NOther | ASARest], N, AL) :-
+	NOther \= N,
+	generatePersonAL(ASARest, N, AL).
+
+generateASP(_, [], _, []).
+generateASP(ASA, [Wi | WRest], N, [N - ALN - Wi | ASPRest]) :-
+	generatePersonAL(ASA, N, ALNrev),
+	reverse(ALNrev, ALN),
+	N1 is N + 1,
+	generateASP(ASA, WRest, N1, ASPRest).
 
 % assignment_opt(NF, NP, ST, F, T, ASP, ASA, Cost) :-
 % 	NF > 0,
@@ -93,10 +106,6 @@ constraintASAN(AL, [(_, AStart, AEnd) | ALRest], ASAN, [AN | ASANRest], NP, N, P
 % 	reverse(RevASP, ASP),
 % 	generateASA(ASP, ASAunsorted),
 % 	sort(ASAunsorted, ASA).
-
-generateALs([], [], []).
-generateALs([activity(_, act(AStart, AEnd)) | ALRest], [AStart | ALStartRest], [AEnd | ALEndRest]) :-
-	generateALs(ALRest, ALStartRest, ALEndRest).
 
 calcD([], 0).
 calcD([(A, AStart, AEnd) | ALRest], D) :-
@@ -113,135 +122,3 @@ calcCost([Wi | WsRest], A, Cost) :-
 	calcCost(WsRest, A, Cost1),
 	CurrCost #= (A - Wi) ^ 2,
 	Cost #= CurrCost + Cost1.
-
-calcCostASA(NP, CurrN, _, _, _, 0) :-
-	CurrN > NP, !.
-calcCostASA(NP, CurrN, [], ASA, A, Cost) :-
-	NewN is CurrN + 1,
-	calcCostASA(NP, NewN, ASA, ASA, A, Cost).
-calcCostASA(NP, CurrN, [_ - N | ASARest], ASA, A, Cost) :-
-	N #= CurrN,
-	calcCostASA(NP, CurrN, ASARest, ASA, A, Cost1),
-	CurrCost #= (A - Wi) ^ 2,
-	Cost #= CurrCost + Cost1.
-calcCostASA(NP, CurrN, [_ - N | ASARest], ASA, A, Cost) :-
-	CurrN #\= N,
-	calcCostASA(NP, CurrN, ASARest, ASA, A, Cost).
-%%%%
-generatePersonASA(_, [], []).
-generatePersonASA(N, [A | ALRest], [A - N | PersonASARest]) :-
-	generatePersonASA(N, ALRest, PersonASARest).
-
-generateASA([], []).
-generateASA([N - AL - _ | ASPRest], ASA) :-
-	generatePersonASA(N, AL, PersonASA),
-	generateASA(ASPRest, ASARest),
-	append(ASARest, PersonASA, ASA).
-
-
-generatePersonASP(_, _, _, _, [], _, [], 0).
-generatePersonASP(N, ALLen, ALStart, ALEnd, [AN - N | ASARest], ST, [ANPerson | ALPersonRest], TSum) :-
-	AN #:: 1..ALLen,
-	AN #= ANPerson,
-	generatePersonASP(N, ALLen, ALStart, ALEnd, ASARest, ST, ALPersonRest, TSum1),
-	element(ANPerson, ALStart, AStart),
-	element(ANPerson, ALEnd, AEnd),
-	TSum #= TSum1 + AEnd - AStart.
-generatePersonASP(N, ALLen, ALStart, ALEnd, [A - NOther | ASARest], ST, AL, TSum) :-
-	NOther #\= N,
-	generatePersonASP(N, ALLen, ALStart, ALEnd, ASARest, ST, AL, TSum).
-
-generateASP(NP, N, _, _, _, _, _, []) :-
-	N > NP.
-generateASP(NP, N, ALLen, ALStart, ALEnd, ASA, ST, [N - ALPerson - TSum | ASPRest]) :-		% call with N = 1
-	N =< NP,
-	TSum #:: 0..ST,
-	generatePersonASP(N, ALLen, ALStart, ALEnd, ASA, ST, ALPerson, TSum),
-	N1 is N + 1,
-	generateASP(NP, N1, ALStart, ALEnd, ALLen, ASA, ST, ASPRest).
-%%%
-
-assignToPerson(N, [], N - [] - 0).
-assignToPerson(N, AL, N - [A | ALPersonRest] - TSum) :-
-	member(A, AL),
-	activity(A, act(AStart, AEnd)),
-	% sorted([A | ALPersonRest]),
-	delete(A, AL, AL1),
-	assignToPerson(N, AL1, N - ALPersonRest - TSum1),
-	listTimeCheck(ALPersonRest, AStart, AEnd),
-	Tsum #= TSum1 + AEnd - AStart.
-assignToPerson(N, AL, N - ALPerson - TSum) :-
-	member(A, AL),
-	delete(A, AL, AL1),
-	assignToPerson(N, AL1, N - ALPerson - TSum).
-
-constraintASAMembers(_, [], []).
-constraintASAMembers(NP, [ALNums | ALNumsRest], [ANum - N | ASAN]) :-
-	N #:: 1..NP,
-	constraintASAMembers(NP, ALNumsRest, ASAN).
-
-constraintASA(NP, ALLen, ASAN) :-
-	length(ALNums, ALLen),
-	ALNums #:: 1..ALLen,
-	alldifferent(ALNums),
-	constraintASAMembers(NP, ALNums, ASAN).
-
-listlistTimeCheck([]).
-listlistTimeCheck([A | NL]) :-
-	activity(A, act(AStart, AEnd)),
-	listTimeCheck(NL, AStart, AEnd),
-	listlistTimeCheck(NL).
-
-timeCheckNLX([]).
-timeCheckNLX([_]).
-timeCheckNLX([(_, _, A1End), (_, A2Start, A2End) | NLRest]) :-
-	A1End #< A2Start,
-	timeCheckNLX([(_, A2Start, A2End) | NLRest]).
-	% ST check?
-
-% timeCheckNLX(ST, [], _).
-% timeCheckNLX(ST, [(_, AStart, AEnd)]) :-
-% 	ST #>= AEnd - AStart.
-% timeCheckNLX(ST, [(_, A1Start, A1End), (_, A2Start, A2End) | NLRest], TSum) :-
-% 	A1End #< A2Start,
-% 	timeCheckNLX([(_, A2Start, A2End) | NLRest]).
-
-%%%
-
-createStartingASP(0, []).
-createStartingASP(N, [N - [] - 0 | ASPRest]) :-
-	N > 0,
-	N1 is N - 1,
-	createStartingASP(N1, ASPRest).
-
-assignmentHelper(_, ASP, [], ASP, []).
-assignmentHelper(ST, ASP, [A - N | ASARest], ASPBefore, [A | ALRest]) :-
-	assignActivity(A, ST, ASPBefore, ASPAfter, N),
-	assignmentHelper(ST, ASP, ASARest, ASPAfter, ALRest).
-
-assignActivity(A, ST, ASPBefore, ASPAfter, N) :- 
-	append(ASP1, [N - NL - TSum | ASP2], ASPBefore),
-	activity(A, act(AStart, AEnd)),
-	canBeAssigned(AStart, AEnd, N, NL, ASPBefore),
-	TSum1 is TSum + AEnd - AStart,
-	TSum1 =< ST,
-	append(ASP1, [N - [A | NL] - TSum1 | ASP2], ASPAfter).
-
-canBeAssigned(AStart, AEnd, N, NL, ASP) :-
-	firstOfItsKind(N - NL, ASP),
-	listTimeCheck(NL, AStart, AEnd).
-
-% acts both as "member()" and to ensure that not all (N!) assignments won't be output
-firstOfItsKind(N - NL, [N - NL - _ | _]).
-firstOfItsKind(N - NL, [_ - L - _ | ASPRest]) :-
-	NL \= L,
-	firstOfItsKind(N - NL, ASPRest).
-
-% ensures that a newly assigned activity to a person is at least 1 unit of time after their last one
-listTimeCheck([], _, _).
-listTimeCheck([PastA | NL], AStart, AEnd) :-
-	activity(PastA, act(PastAStart, PastAEnd)),
-	(AEnd #< PastAStart; AStart #> PastAEnd),
-	listTimeCheck(NL, AStart, AEnd).
-
-%%%%%%%%%%
