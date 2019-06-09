@@ -3,21 +3,23 @@
 
 assignment_opt(NF, NP, ST, F, T, ASP, ASA, Cost) :-
 	getAL(NF, ALun),
-	insert_sort(ALun, AL),
+	insertSort(ALun, AL),
 	calcD(AL, D),
 	calcA(NP, D, A),
 	ALLen is length(AL),
 	length(ASAN, ALLen),
 	ASAN #:: 1..NP,
+	orderASANfirst(ASAN, NP, 1),
+	orderASAN(ASAN, NP, 1),
+	constraintASAN(AL, AL, ASAN, ASAN, NP, 1, -1),
 	length(Ws, NP),
 	Ws #:: 0..ST,
 	calcWs(AL, AL, ASAN, ASAN, ST, 1, Ws),
-	constraintASAN(AL, AL, ASAN, ASAN, NP, 1, -1),
 	Cost #:: 0..NP*A^2,
 	calcCost(Ws, A, Cost),
 	bb_min(labeling(ASAN), Cost, bb_options{delta:F, timeout:T}),
-	% bb_min(labeling(ASAN), Cost, bb_options{delta:F, timeout:T, strategy:dichotomic}),
 	generateASA(AL, ASAN, ASAun),
+	% write(ASAN),		%%
 	sort(ASAun, ASA),
 	generateASP(ASA, Ws, 1, ASP).
 
@@ -29,54 +31,19 @@ getAL(NF, ALNF) :-
 	length(ALNF, NF),
 	append(ALNF, _, AL).
 
-insert_sort(List, Sorted) :- 
-	i_sort(List, [], Sorted).
-i_sort([], Acc, Acc).
-i_sort([(A, AStart, AEnd) | T], Acc, Sorted) :- 
-	insert((A, AStart, AEnd), Acc, NAcc), i_sort(T, NAcc, Sorted).
+insertSort(List, Sorted) :- 
+	iSort(List, [], Sorted).
+
+iSort([], Acc, Acc).
+iSort([(A, AStart, AEnd) | L], Acc, Sorted) :- 
+	insertItemSorted((A, AStart, AEnd), Acc, NAcc), iSort(L, NAcc, Sorted).
    
-insert((A1, AStart1, AEnd1), [(A2, AStart2, AEnd2) | T], [(A2, AStart2, AEnd2) | NT]) :-
+insertItemSorted((A, AStart, AEnd), [], [(A, AStart, AEnd)]).
+insertItemSorted((A1, AStart1, AEnd1), [(A2, AStart2, AEnd2) | L], [(A2, AStart2, AEnd2) | NL]) :-
 	AStart1 > AStart2,
-	insert((A1, AStart1, AEnd1), T, NT).
-insert((A1, AStart1, AEnd1), [(A2, AStart2, AEnd2) | T], [(A1, AStart1, AEnd1), (A2, AStart2, AEnd2) | T]) :-
+	insertItemSorted((A1, AStart1, AEnd1), L, NL).
+insertItemSorted((A1, AStart1, AEnd1), [(A2, AStart2, AEnd2) | L], [(A1, AStart1, AEnd1), (A2, AStart2, AEnd2) | L]) :-
 	AStart1 =< AStart2.
-insert((A, AStart, AEnd), [], [(A, AStart, AEnd)]).
-
-calcWs(_, _, _, _, _, _, []).
-calcWs(AL, [], ASAN, [], ST, N, [0 | WsRest]) :-
-	N1 is N + 1,
-	calcWs(AL, AL, ASAN, ASAN, ST, N1, WsRest).
-calcWs(AL, [(_, AStart, AEnd) | ALRest], ASAN, [AN | ASANRest], ST, N, [WiNew | WsRest]) :-
-	WiNew #:: 0..ST,
-	(AN #= N, WiNew #= Wi + AEnd - AStart) or (AN #\= N, WiNew #= Wi),
-	calcWs(AL, ALRest, ASAN, ASANRest, ST, N, [Wi | WsRest]).
-
-constraintASAN(_, _, _, _, NP, N, _) :-
-	N > NP, !.
-constraintASAN(AL, [], ASAN, [], NP, N, _) :-
-	N1 is N + 1,
-	constraintASAN(AL, AL, ASAN, ASAN, NP, N1, -1).
-constraintASAN(AL, [(_, AStart, AEnd) | ALRest], ASAN, [AN | ASANRest], NP, N, PrevLatestN) :-
-	[PrevLatestN, NextLatestN] #:: -1..108,
-	(AN #= N, PrevLatestN #< AStart, NextLatestN #= AEnd) or (AN #\= N, NextLatestN #= PrevLatestN),
-	constraintASAN(AL, ALRest, ASAN, ASANRest, NP, N, NextLatestN).
-
-generateASA([], [], []).
-generateASA([(A, _, _) | ALRest], [N | ASANRest], [A - N | ASARest]) :-
-	generateASA(ALRest, ASANRest, ASARest).
-
-generatePersonAL([], _, []).
-generatePersonAL([A - N | ASARest], N, [A | ALRest]) :-
-	generatePersonAL(ASARest, N, ALRest).
-generatePersonAL([_ - NOther | ASARest], N, AL) :-
-	NOther \= N,
-	generatePersonAL(ASARest, N, AL).
-
-generateASP(_, [], _, []).
-generateASP(ASA, [Wi | WRest], N, [N - ALN - Wi | ASPRest]) :-
-	generatePersonAL(ASA, N, ALN),
-	N1 is N + 1,
-	generateASP(ASA, WRest, N1, ASPRest).
 
 calcD([], 0).
 calcD([(_, AStart, AEnd) | ALRest], D) :-
@@ -96,6 +63,58 @@ calcCost([Wi | WsRest], A, Cost) :-
 	CurrCost #:: 0..A^2,
 	CurrCost #= (A - Wi) ^ 2,
 	Cost #= CurrCost + Cost1.
+
+% check uniqueness of solutions similar to Assignment 2
+% the first NP activities can easily constrained based on that
+orderASANfirst([], _, _).
+orderASANfirst(_, NP, CurrN) :-
+	CurrN > NP, !.
+orderASANfirst([N | ASANRest], NP, CurrN) :-
+	N #:: 1..CurrN,
+	N1 is CurrN + 1,
+	orderASANfirst(ASANRest, NP, N1).
+
+orderASAN([], _, _).
+orderASAN([N | ASANRest], NP, CurrN) :-
+	N #:: 1..NP,
+	[CurrN, NewCurrN] #:: 1..NP + 1,
+	(CurrN #> NP, NewCurrN #= CurrN) or (N #< CurrN, NewCurrN #= CurrN) or (N #= CurrN, NewCurrN #= CurrN + 1),
+	orderASAN(ASANRest, NP, NewCurrN).
+
+calcWs(_, _, _, _, _, _, []).
+calcWs(AL, [], ASAN, [], ST, N, [0 | WsRest]) :-
+	N1 is N + 1,
+	calcWs(AL, AL, ASAN, ASAN, ST, N1, WsRest).
+calcWs(AL, [(_, AStart, AEnd) | ALRest], ASAN, [AN | ASANRest], ST, N, [WiNew | WsRest]) :-
+	WiNew #:: 0..ST,
+	(AN #= N, WiNew #= Wi + AEnd - AStart) or (AN #\= N, WiNew #= Wi),
+	calcWs(AL, ALRest, ASAN, ASANRest, ST, N, [Wi | WsRest]).
+
+constraintASAN(_, _, _, _, NP, N, _) :-
+	N > NP, !.
+constraintASAN(AL, [], ASAN, [], NP, N, _) :-
+	N1 is N + 1,
+	constraintASAN(AL, AL, ASAN, ASAN, NP, N1, -1).
+constraintASAN(AL, [(_, AStart, AEnd) | ALRest], ASAN, [AN | ASANRest], NP, N, PrevLatestN) :-
+	(AN #= N, PrevLatestN #< AStart, NextLatestN #= AEnd) or (AN #\= N, NextLatestN #= PrevLatestN),
+	constraintASAN(AL, ALRest, ASAN, ASANRest, NP, N, NextLatestN).
+
+generateASA([], [], []).
+generateASA([(A, _, _) | ALRest], [N | ASANRest], [A - N | ASARest]) :-
+	generateASA(ALRest, ASANRest, ASARest).
+
+generateASP(_, [], _, []).
+generateASP(ASA, [Wi | WRest], N, [N - ALN - Wi | ASPRest]) :-
+	generatePersonAL(ASA, N, ALN),
+	N1 is N + 1,
+	generateASP(ASA, WRest, N1, ASPRest).
+
+generatePersonAL([], _, []).
+generatePersonAL([A - N | ASARest], N, [A | ALRest]) :-
+	generatePersonAL(ASARest, N, ALRest).
+generatePersonAL([_ - NOther | ASARest], N, AL) :-
+	NOther \= N,
+	generatePersonAL(ASARest, N, AL).
 
 %%%%%%
 
