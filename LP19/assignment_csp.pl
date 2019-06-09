@@ -9,10 +9,11 @@ assignment_opt(NF, NP, ST, F, T, ASP, ASA, Cost) :-
 	ALLen is length(AL),
 	length(ASAN, ALLen),
 	ASAN #:: 1..NP,
-	constraintASAN(AL, AL, ASAN, ASAN, NP, 1, -1),
 	length(Ws, NP),
 	Ws #:: 0..ST,
-	calcWs(AL, AL, ASAN, ASAN, 1, Ws),
+	calcWs(AL, AL, ASAN, ASAN, ST, 1, Ws),
+	constraintASAN(AL, AL, ASAN, ASAN, NP, 1, -1),
+	Cost #:: 0..NP*A^2,
 	calcCost(Ws, A, Cost),
 	bb_min(labeling(ASAN), Cost, bb_options{delta:F, timeout:T}),
 	% bb_min(labeling(ASAN), Cost, bb_options{delta:F, timeout:T, strategy:dichotomic}),
@@ -41,13 +42,14 @@ insert((A1, AStart1, AEnd1), [(A2, AStart2, AEnd2) | T], [(A1, AStart1, AEnd1), 
 	AStart1 =< AStart2.
 insert((A, AStart, AEnd), [], [(A, AStart, AEnd)]).
 
-calcWs(_, _, _, _, _, []).
-calcWs(AL, [], ASAN, [], N, [0 | WsRest]) :-
+calcWs(_, _, _, _, _, _, []).
+calcWs(AL, [], ASAN, [], ST, N, [0 | WsRest]) :-
 	N1 is N + 1,
-	calcWs(AL, AL, ASAN, ASAN, N1, WsRest).
-calcWs(AL, [(_, AStart, AEnd) | ALRest], ASAN, [AN | ASANRest], N, [WiNew | WsRest]) :-
+	calcWs(AL, AL, ASAN, ASAN, ST, N1, WsRest).
+calcWs(AL, [(_, AStart, AEnd) | ALRest], ASAN, [AN | ASANRest], ST, N, [WiNew | WsRest]) :-
+	WiNew #:: 0..ST,
 	(AN #= N, WiNew #= Wi + AEnd - AStart) or (AN #\= N, WiNew #= Wi),
-	calcWs(AL, ALRest, ASAN, ASANRest, N, [Wi | WsRest]).
+	calcWs(AL, ALRest, ASAN, ASANRest, ST, N, [Wi | WsRest]).
 
 constraintASAN(_, _, _, _, NP, N, _) :-
 	N > NP, !.
@@ -55,6 +57,7 @@ constraintASAN(AL, [], ASAN, [], NP, N, _) :-
 	N1 is N + 1,
 	constraintASAN(AL, AL, ASAN, ASAN, NP, N1, -1).
 constraintASAN(AL, [(_, AStart, AEnd) | ALRest], ASAN, [AN | ASANRest], NP, N, PrevLatestN) :-
+	[PrevLatestN, NextLatestN] #:: -1..108,
 	(AN #= N, PrevLatestN #< AStart, NextLatestN #= AEnd) or (AN #\= N, NextLatestN #= PrevLatestN),
 	constraintASAN(AL, ALRest, ASAN, ASANRest, NP, N, NextLatestN).
 
@@ -71,8 +74,7 @@ generatePersonAL([_ - NOther | ASARest], N, AL) :-
 
 generateASP(_, [], _, []).
 generateASP(ASA, [Wi | WRest], N, [N - ALN - Wi | ASPRest]) :-
-	generatePersonAL(ASA, N, ALNrev),
-	reverse(ALNrev, ALN),
+	generatePersonAL(ASA, N, ALN),
 	N1 is N + 1,
 	generateASP(ASA, WRest, N1, ASPRest).
 
@@ -88,7 +90,10 @@ calcA(NP, D, A) :-
 
 calcCost([], _, 0).
 calcCost([Wi | WsRest], A, Cost) :-
+	NRest is length(WsRest),
+	Cost1 #:: 0..NRest*A^2,
 	calcCost(WsRest, A, Cost1),
+	CurrCost #:: 0..A^2,
 	CurrCost #= (A - Wi) ^ 2,
 	Cost #= CurrCost + Cost1.
 
