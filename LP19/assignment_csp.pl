@@ -6,6 +6,7 @@ assignment_opt(NF, NP, ST, F, T, ASP, ASA, Cost) :-
 	insertSort(ALun, AL),
 	calcD(AL, D),
 	calcA(NP, D, A),
+	BBFrom is abs(NP*A - D),	% the least possible cost is evident from the type 
 	ALLen is length(AL),
 	length(ASAN, ALLen),
 	ASAN #:: 1..NP,
@@ -15,7 +16,7 @@ assignment_opt(NF, NP, ST, F, T, ASP, ASA, Cost) :-
 	length(Ws, NP),
 	Ws #:: 0..ST,
 	calcWs(AL, AL, ASAN, ASAN, ST, 1, Ws),
-	Cost #:: 0..NP*A^2,
+	Cost #:: BBFrom..NP*A^2,
 	calcCost(Ws, A, Cost),
 	bb_min(labeling(ASAN), Cost, bb_options{delta:F, timeout:T}),
 	generateASA(AL, ASAN, ASAun),
