@@ -3,10 +3,10 @@
 
 assignment_opt(NF, NP, ST, F, T, ASP, ASA, Cost) :-
 	getAL(NF, ALun),
-	insertSort(ALun, AL),
+	insertsort(ALun, AL),
 	calcD(AL, D),
 	calcA(NP, D, A),
-	BBFrom is abs(NP*A - D),	% the least possible cost is evident from the type 
+	MinCost is abs(NP*A - D),	 
 	ALLen is length(AL),
 	length(ASAN, ALLen),
 	ASAN #:: 1..NP,
@@ -16,13 +16,20 @@ assignment_opt(NF, NP, ST, F, T, ASP, ASA, Cost) :-
 	length(Ws, NP),
 	Ws #:: 0..ST,
 	calcWs(AL, AL, ASAN, ASAN, ST, 1, Ws),
-	Cost #:: BBFrom..NP*A^2,
+	Cost #:: MinCost..NP*A^2,
 	calcCost(Ws, A, Cost),
 	bb_min(labeling(ASAN), Cost, bb_options{delta:F, timeout:T}),
 	generateASA(AL, ASAN, ASAun),
 	% write(ASAN),		%%
 	sort(ASAun, ASA),
 	generateASP(ASA, Ws, 1, ASP).
+
+% the minimum possible cost is evident from its type:
+% the best case scenario is for every person to have Wi = A, 
+% but when D is not a multiple of NP that won't be possible for all people
+% for example, for NP = 5, D = 28 ==> A = 6 and assuming perfect assignment distribution, 
+%   3 people will have Wi = 6 and 2 will have Wi = 5, reulting in a MinCost of 2.
+% we can formulate that to MinCost = abs(NP*A - D)
 
 getAL(0, AL) :-
 	findall((A, AStart, AEnd), activity(A, act(AStart, AEnd)), AL).
@@ -32,19 +39,15 @@ getAL(NF, ALNF) :-
 	length(ALNF, NF),
 	append(ALNF, _, AL).
 
-insertSort(List, Sorted) :- 
-	iSort(List, [], Sorted).
+insertsort([], []).
+insertsort([X | Tail], Sorted) :-
+	insertsort(Tail, SortedTail),
+	insert(X, SortedTail, Sorted).
 
-iSort([], Acc, Acc).
-iSort([(A, AStart, AEnd) | L], Acc, Sorted) :- 
-	insertItemSorted((A, AStart, AEnd), Acc, NAcc), iSort(L, NAcc, Sorted).
-   
-insertItemSorted((A, AStart, AEnd), [], [(A, AStart, AEnd)]).
-insertItemSorted((A1, AStart1, AEnd1), [(A2, AStart2, AEnd2) | L], [(A2, AStart2, AEnd2) | NL]) :-
-	AStart1 > AStart2,
-	insertItemSorted((A1, AStart1, AEnd1), L, NL).
-insertItemSorted((A1, AStart1, AEnd1), [(A2, AStart2, AEnd2) | L], [(A1, AStart1, AEnd1), (A2, AStart2, AEnd2) | L]) :-
-	AStart1 =< AStart2.
+insert((A1, AStart1, AEnd1), [(A2, AStart2, AEnd2) | Sorted], [(A2, AStart2, AEnd2) | Sorted1]) :-
+	AStart1 > AStart2, !,
+	insert((A1, AStart1, AEnd1), Sorted, Sorted1).
+insert(X, Sorted, [X | Sorted]).
 
 calcD([], 0).
 calcD([(_, AStart, AEnd) | ALRest], D) :-
@@ -58,10 +61,7 @@ calcA(NP, D, A) :-
 
 calcCost([], _, 0).
 calcCost([Wi | WsRest], A, Cost) :-
-	NRest is length(WsRest),
-	Cost1 #:: 0..NRest*A^2,
 	calcCost(WsRest, A, Cost1),
-	CurrCost #:: 0..A^2,
 	CurrCost #= (A - Wi) ^ 2,
 	Cost #= CurrCost + Cost1.
 
